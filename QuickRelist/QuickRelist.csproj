@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="Dalamud.Plugin.Bootstrap.targets"/>
+
+    <PropertyGroup>
+        <Version>0.0.0.1</Version>
+        <Description>A time-saving plugin.</Description>
+        <PackageProjectUrl>https://github.com/oorzkws/QuickRelist</PackageProjectUrl>
+        <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ECommons\ECommons\ECommons.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Krafs.Publicizer" Version="2.2.1">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <Publicize Include="Dalamud:Dalamud.Game.Network"/>
+        <Publicize Include="Dalamud:Dalamud.Game.Network.Internal.NetworkHandlersAddressResolver"/>
+        <Publicize Include="Dalamud:Dalamud.Game.Network.Internal.NetworkHandlers"/>
+        <Publicize Include="Dalamud:Dalamud.Game.Network.Internal.MarketBoardUploaders"/>
+        <Publicize Include="Dalamud:Dalamud.Game.Network.Internal.MarketBoardUploaders.MarketBoardItemRequest"/>
+        <Publicize Include="Dalamud:Dalamud.Game.Network.Internal.MarketBoardUploaders.MarketBoardItemRequest..ctor"/>
+        <Publicize Include="Dalamud:Dalamud.Game.Network.Internal.MarketBoardUploaders.MarketBoardItemRequest.Read"/>
+    </ItemGroup>
+    <PropertyGroup>
+        <PublicizerClearCacheOnClean>true</PublicizerClearCacheOnClean>
+    </PropertyGroup>
+</Project>
