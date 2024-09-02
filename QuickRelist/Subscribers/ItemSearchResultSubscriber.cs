@@ -11,7 +11,7 @@ namespace QuickRelist;
 public unsafe class ItemSearchResultSubscriber : IDisposable {
     internal AddonItemSearchResult* ItemSearchResult;
 
-    public unsafe ItemSearchResultSubscriber() {
+    public ItemSearchResultSubscriber() {
         AddonLifecycle.RegisterListener(AddonEvent.PostSetup, "ItemSearchResult", OnSetup);
         AddonLifecycle.RegisterListener(AddonEvent.PreFinalize, "ItemSearchResult", OnFinalize);
     }

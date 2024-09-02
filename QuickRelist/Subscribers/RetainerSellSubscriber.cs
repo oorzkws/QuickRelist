@@ -15,6 +15,7 @@ using Lumina.Excel.GeneratedSheets;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using static QuickRelist.QuickRelist;
 
 namespace QuickRelist;
 
@@ -25,8 +26,8 @@ public unsafe class RetainerSellSubscriber : IDisposable {
     private TaskManager taskManager;
 
 
-    public unsafe RetainerSellSubscriber() {
-        taskManager = new TaskManager(new TaskManagerConfiguration() {
+    public RetainerSellSubscriber() {
+        taskManager = new TaskManager(new TaskManagerConfiguration {
             AbortOnTimeout = false, // If it times out, we don't need to clear the entire stack
         });
 
@@ -54,11 +55,10 @@ public unsafe class RetainerSellSubscriber : IDisposable {
             return null;
 
         return new Tuple<bool, Item>(isHq, item);
-
     }
 
     private static int HistoricalMean(uint itemId, bool isHq) {
-        var history = QuickRelist.MarketSubscriber.ItemSalesHistory[itemId].Where(sale => !isHq || sale.IsHq).ToImmutableArray();
+        var history = SubscriberMarket.ItemSalesHistory[itemId].ToImmutableArray().Where(sale => !isHq || sale.IsHq).ToImmutableArray();
         switch (history.Length) {
             case 0: return -1;
             case 1: return (int)history[1].SalePrice;
@@ -87,12 +87,12 @@ public unsafe class RetainerSellSubscriber : IDisposable {
 
         var halvedHistoricalMean = (int)float.Round(HistoricalMean(itemId, isHq) * 0.5f);
         Log.Verbose($"Halved historical mean is {halvedHistoricalMean}");
-        var filteredOfferings = QuickRelist.MarketSubscriber.ItemCurrentOfferings[itemId].ToImmutableArray().Where(offer => (!isHq || offer.IsHq) && !retainerIds.Contains(offer.RetainerId)).Take(10).ToArray();
+        var filteredOfferings = SubscriberMarket.ItemCurrentOfferings[itemId].ToImmutableArray().Where(offer => (!isHq || offer.IsHq) && !retainerIds.Contains(offer.RetainerId)).Take(10).ToArray();
         var minimumPrice = 1u;
-        for (int i = 0; i < filteredOfferings.Length; i++) {
+        for (var i = 0; i < filteredOfferings.Length; i++) {
             var offer = filteredOfferings[i];
             if (i == filteredOfferings.Length - 1) {
-                Log.Debug($"Matched the tenth or last unit price :shrug:");
+                Log.Debug("Matched the tenth or last unit price :shrug:");
                 minimumPrice = offer.PricePerUnit;
                 break;
             }
@@ -105,7 +105,8 @@ public unsafe class RetainerSellSubscriber : IDisposable {
         }
         // Still haven't found a price lol
         if (minimumPrice == 1) {
-            minimumPrice = 69421;//items.GetRow(itemId)!.PriceLow;
+            Log.Warning($"No acceptable price found for {items.GetRow(itemId)!.Name.ExtractText()}");
+            minimumPrice = 69421; //items.GetRow(itemId)!.PriceLow;
         }
         return minimumPrice;
     }
@@ -130,57 +131,41 @@ public unsafe class RetainerSellSubscriber : IDisposable {
             Log.Warning($"Couldn't find an item matching the name '{itemRegString}'");
             return;
         }
-        
+
         var itemId = itemData.Item2.RowId;
 
         Log.Verbose($"Guessed Item ID for {itemRegString} is {itemId}");
-
-        taskManager.Enqueue(() => {
-            if (!EzThrottler.Throttle("RetainerSellSubscriber.OnSetup", 2000) || QuickRelist.MarketSubscriber.IsBusy) {
-                return false;
-            }
-            if (QuickRelist.MarketSubscriber.ItemSalesHistory.ContainsKey(itemId)) {
-                return true;
-            }
-            return QuickRelist.MarketSubscriber.RequestDataForItem(itemId);
-        });
-        
-        var retries = 0;
-        
-        taskManager.Enqueue(ProcessUpdate);
-        if (KeyState[VirtualKey.CONTROL] || QuickRelist.RetainerSellListSubscriber.step != 1) {
-            taskManager.Enqueue(() => {
-                if (!EzThrottler.Throttle("RetainerSellSubscriber.OnSetup.AdjustNext", 100)) {
-                    return false;
-                }
-                if (QuickRelist.RetainerSellListSubscriber.RetainerSellList is not null) {
-                    QuickRelist.RetainerSellListSubscriber.AdjustNext();
-                    return true;
-                }
-                return false;
-            });
+        // If we don't have a cache entry, queue a request
+        if (!SubscriberMarket.CachedItems.Contains(itemId)) {
+            SubscriberMarket.EnqueueRequest(itemId);
         }
 
-        return;
+        var retries = 0;
 
-        bool ProcessUpdate() {
-            if (!EzThrottler.Throttle("RetainerSellSubscriber.OnSetup.ProcessUpdate", retries * 333) || QuickRelist.MarketSubscriber.IsBusy) {
+        // Wait a little before trying to process
+        taskManager.EnqueueDelay(500);
+        // Wait for the price check to finish then enter price and close dialog
+        taskManager.Enqueue(() => {
+            if (!EzThrottler.Throttle("RetainerSellSubscriber.OnSetup.ProcessUpdate", 100)) {
                 return false;
             }
-            if (retries++ > 10) {
-                Log.Verbose($"Aborting  || ItemId: {itemId}, LastRequestedItemId: {QuickRelist.MarketSubscriber.LastRequestedItemId} || {RetainerSell is null}");
+            // 15s timeout
+            if (retries++ > 15000 / 100) {
+                Log.Warning($"Timeout on awaiting market data for {itemId}");
                 taskManager.Abort();
                 return false;
             }
-            if (RetainerSell is null) {
-                if (GenericHelpers.TryGetAddonByName<AddonRetainerSell>("RetainerSell", out var newRetainerSell)) {
-                    RetainerSell = newRetainerSell;
-                } else {
-                    Log.Verbose("Lost RetainerSell and couldn't find it again!");
+            if (SubscriberMarket.CachedItems.Contains(itemId)) {
+                // Make sure the addon is still valid
+                if (RetainerSell is null) {
+                    if (GenericHelpers.TryGetAddonByName<AddonRetainerSell>("RetainerSell", out var newRetainerSell)) {
+                        RetainerSell = newRetainerSell;
+                    } else {
+                        Log.Warning("Lost RetainerSell and couldn't find it again!");
+                    }
+                    // true in the sense that we have nothing to edit lmao
+                    return true;
                 }
-                return false;
-            }
-            if (!QuickRelist.MarketSubscriber.IsBusy) {
                 var targetPrice = GetMinimumAcceptablePrice(itemId, itemData.Item1) - 1;
                 RetainerSell->AskingPrice->SetValue((int)targetPrice);
                 Log.Information($"Set {itemSeString.ExtractText()} price to {targetPrice}");
@@ -188,12 +173,15 @@ public unsafe class RetainerSellSubscriber : IDisposable {
                 Callback.Fire(&RetainerSell->AtkUnitBase, true, 0);
                 return true;
             }
-            Log.Verbose($"No price yet, retrying in {EzThrottler.GetRemainingTime("RetainerSellSubscriber.OnSetup.ProcessUpdate")} ms || ItemId: {itemId}, LastRequestedItemId: {QuickRelist.MarketSubscriber.LastRequestedItemId}");
             return false;
-        }
+        });
     }
 
     private void OnFinalize(AddonEvent addonEvent, AddonArgs args) {
+        // If CTRL is held while closing the dialog, auto process the whole list
+        if (RetainerSell is not null && (KeyState[VirtualKey.CONTROL] || SubscriberRetainerSellList.ListStep != 1)) {
+            SubscriberRetainerSellList.AdjustNext();
+        }
         RetainerSell = null;
     }
 }

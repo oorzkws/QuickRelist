@@ -1,7 +1,7 @@
 ﻿using Dalamud.Interface.Utility;
-using System.Numerics;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
+using System.Numerics;
 
 namespace QuickRelist.Windows;
 
@@ -19,7 +19,7 @@ public class ConfigWindow(QuickRelist plugin) : Window("A Wonderful Configuratio
         Flags &= ~ImGuiWindowFlags.NoMove;
     }
 
-    public override unsafe void Draw() {
+    public override void Draw() {
         ImGui.SetNextWindowSizeConstraints(new Vector2(700, 600) * ImGuiHelpers.GlobalScale, new Vector2(9999));
         // can't ref a property, so use a local copy
         var configValue = configuration.Enabled;
@@ -30,7 +30,7 @@ public class ConfigWindow(QuickRelist plugin) : Window("A Wonderful Configuratio
         }
 
         if (ImGui.Button("Generate MB Request")) {
-            QuickRelist.MarketSubscriber.RequestDataForItem(2);
+            QuickRelist.SubscriberMarket.EnqueueRequest(2);
         }
     }
 }
