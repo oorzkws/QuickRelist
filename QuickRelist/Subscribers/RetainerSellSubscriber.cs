@@ -11,7 +11,7 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using Lumina.Excel;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -27,7 +27,7 @@ public unsafe class RetainerSellSubscriber : IDisposable {
 
 
     public RetainerSellSubscriber() {
-        taskManager = new TaskManager(new TaskManagerConfiguration {
+        taskManager = new ECommons.Automation.NeoTaskManager.TaskManager(new TaskManagerConfiguration {
             AbortOnTimeout = false, // If it times out, we don't need to clear the entire stack
         });
 
@@ -49,12 +49,12 @@ public unsafe class RetainerSellSubscriber : IDisposable {
             baseName = baseName.Substring(0, baseName.Length - hqToken.Length);
         }
 
-        var item = items.SingleOrDefault(i => i.Name.ExtractText() == baseName);
+        var item = items.Where(i => i.Name.ExtractText() == baseName).FirstOrNull();
 
         if (item is null)
             return null;
 
-        return new Tuple<bool, Item>(isHq, item);
+        return new Tuple<bool, Item>(isHq, item.Value);
     }
 
     private static int HistoricalMean(uint itemId, bool isHq) {
@@ -141,6 +141,9 @@ public unsafe class RetainerSellSubscriber : IDisposable {
         }
 
         var retries = 0;
+
+        var provider = 
+        new MarketRequestProvider(itemId).Subscribe(new MarketRequestObserver());
 
         // Wait a little before trying to process
         taskManager.EnqueueDelay(500);

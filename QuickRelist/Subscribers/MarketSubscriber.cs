@@ -5,6 +5,7 @@ using Dalamud.Game.Network.Structures;
 using Dalamud.Hooking;
 using ECommons;
 using ECommons.Automation.NeoTaskManager;
+using FFXIVClientStructs.FFXIV.Client.Network;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using QuickRelist.Extensions;
 using System.Collections.Concurrent;
@@ -22,6 +23,13 @@ public class MarketSubscriber : IDisposable {
 
     public uint ExpectedOfferingsParts { get; private set; }
     public uint ReceivedOfferingsParts { get; private set; }
+    
+    public delegate void OnRequestUpdatedDelegate(IMarketBoardHistory? history, IMarketBoardCurrentOfferings? listings);
+    public delegate void OnRequestStartedDelegate(uint totalPackets);
+    public delegate void OnRequestErroredDelegate(uint exceptionCode);
+    public event OnRequestUpdatedDelegate OnRequestUpdated;
+    public event OnRequestStartedDelegate OnRequestStarted;
+    public event OnRequestErroredDelegate OnRequestErrored;
 
     private TaskManager MarketTaskManager { get; set; }
 
@@ -47,23 +55,21 @@ public class MarketSubscriber : IDisposable {
         requestDataHook ??= Hook.HookFromAddress<InfoProxyItemSearch.Delegates.RequestData>((nint)InfoProxyItemSearch.StaticVirtualTablePointer->RequestData, RequestDataDetour);
         requestDataHook?.Enable();
 
-        MarketBoard.HistoryReceived += OnHistoryReceived;
-        MarketBoard.OfferingsReceived += OnOfferingsReceived;
+        IMarketBoard.HistoryReceived += OnHistoryReceived;
+        IMarketBoard.OfferingsReceived += OnOfferingsReceived;
 
         Condition.ConditionChange += OnConditionChange;
 
         // Dalamud/Game/Network/Internal/NetworkHandlers.cs
-        var addressResolver = new NetworkHandlersAddressResolver();
-        addressResolver.Setup(SigScanner);
-        itemRequestStartHook ??= Hook.HookFromAddress<MarketBoardItemRequestStartPacketHandler>(addressResolver.MarketBoardItemRequestStartPacketHandler, MarketItemRequestStartDetour);
+        itemRequestStartHook ??= Hook.HookFromAddress<PacketDispatcher.Delegates.HandleMarketBoardItemRequestStartPacket>((nint)PacketDispatcher.MemberFunctionPointers.HandleMarketBoardItemRequestStartPacket, MarketItemRequestStartDetour);
         itemRequestStartHook?.Enable();
 
         MarketTaskManager = new TaskManager();
     }
 
     public void Dispose() {
-        MarketBoard.HistoryReceived -= OnHistoryReceived;
-        MarketBoard.OfferingsReceived -= OnOfferingsReceived;
+        IMarketBoard.HistoryReceived -= OnHistoryReceived;
+        IMarketBoard.OfferingsReceived -= OnOfferingsReceived;
 
         requestDataHook?.Dispose();
         itemRequestStartHook?.Dispose();
@@ -119,15 +125,19 @@ public class MarketSubscriber : IDisposable {
         CachedItems.Clear();
     }
 
-    // We're basically just using Dalamud's hook system
-    private readonly Hook<MarketBoardItemRequestStartPacketHandler>? itemRequestStartHook;
-    private delegate nint MarketBoardItemRequestStartPacketHandler(nint a1, nint packetRef);
+    // Added to FFXIVClientStructs for 7.1
+    private readonly Hook<PacketDispatcher.Delegates.HandleMarketBoardItemRequestStartPacket>? itemRequestStartHook;
     private const float listingsPerPacket = 10f;
 
-    private nint MarketItemRequestStartDetour(nint a1, nint packetRef) {
+    private unsafe void MarketItemRequestStartDetour(PacketDispatcher* a1, nint packetRef) {
         try {
+            // Create a new observer
+            // 
             // Store the amount of packets we expect to receive
             var requestData = MarketBoardItemRequest.Read(packetRef);
+            // Invoke the event
+            var packetsToReceive = (uint)(requestData.AmountToArrive == 0 ? 0 : float.Ceiling(requestData.AmountToArrive / listingsPerPacket));
+            OnRequestStarted.Invoke(packetsToReceive);
             // Are we already busy?
             if (IsBusy) {
                 Log.Warning("Market request started before previous request finished");
@@ -139,13 +149,13 @@ public class MarketSubscriber : IDisposable {
                 EnqueueRequest(LastRequestedItemId, true);
             } else {
                 Log.Verbose($"Request made for {requestData.AmountToArrive} listings");
-                ExpectedOfferingsParts = (uint)float.Ceiling(requestData.AmountToArrive / listingsPerPacket);
+                ExpectedOfferingsParts = packetsToReceive;
             }
         } catch (Exception e) {
             Log.Error(e, "Error in MarketItemRequestStartDetour");
             IsBusy = false;
         }
-        return itemRequestStartHook!.OriginalDisposeSafe(a1, packetRef);
+        itemRequestStartHook!.Original(a1, packetRef);
     }
 
     private void EnsureQueueProcessorIsRunning() {
@@ -157,7 +167,11 @@ public class MarketSubscriber : IDisposable {
 
     private unsafe bool StepQueue() {
         // Wait before continuing
-        if (!Throttle("RetainerSellSubscriber.OnSetup", 2500)) {
+        if (!Throttle("MarketSubscriber.StepQueue", 2000)) {
+            return false;
+        }
+        // If still receiving the last request
+        if (IsBusy) {
             return false;
         }
         // Queue empty?
@@ -171,7 +185,7 @@ public class MarketSubscriber : IDisposable {
             return false;
         // Clear the last search data and our cache then update the SearchItemId
         var itemId = RequestQueue.Peek();
-        proxyInstance->ClearData();
+        proxyInstance->EntryCount = 0; // Same as ClearData() according to ClientStructs
         ItemSalesHistory[itemId] = new SortedSet<IMarketBoardHistoryListing>(new HistoryListingsByPrice());
         ItemCurrentOfferings[itemId] = new SortedSet<IMarketBoardItemListing>(new ItemListingsByPrice());
         CachedItems.Remove(itemId);

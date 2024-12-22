@@ -13,7 +13,7 @@ namespace QuickRelist;
 public class QuickRelist : IDalamudPlugin {
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
-    [PluginService] internal static IMarketBoard MarketBoard { get; private set; } = null!;
+    [PluginService] internal static IMarketBoard IMarketBoard { get; private set; } = null!;
     [PluginService] internal static IContextMenu ContextMenu { get; private set; } = null!;
     //[PluginService] internal static Dalamud.Game.MarketBoard.                InternalMarketBoard        { get; private set; } = null!;
     internal static MarketSubscriber SubscriberMarket { get; private set; } = null!;
