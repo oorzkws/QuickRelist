@@ -12,7 +12,7 @@ namespace QuickRelist;
 
 public unsafe class RetainerSellListSubscriber : IDisposable {
     internal AtkUnitBase* RetainerSellList;
-    internal int ListStep = 1;
+    internal int ListStep = 0;
 
     public RetainerSellListSubscriber() {
         AddonLifecycle.RegisterListener(AddonEvent.PostSetup, "RetainerSellList", OnSetup);
@@ -69,7 +69,7 @@ public unsafe class RetainerSellListSubscriber : IDisposable {
         var ret = AgentModule.Instance()->GetAgentByInternalId(AgentId.Retainer);
         var saleCount = RetainerManager.Instance()->GetActiveRetainer()->MarketItemCount;
         if (ListStep >= saleCount) {
-            ListStep = 1;
+            ListStep = 0;
             return;
         }
         ClickItem(ret, ListStep);

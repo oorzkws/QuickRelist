@@ -183,7 +183,7 @@ public unsafe class RetainerSellSubscriber : IDisposable {
 
     private void OnFinalize(AddonEvent addonEvent, AddonArgs args) {
         // If CTRL is held while closing the dialog, auto process the whole list
-        if (RetainerSell is not null && (KeyState[VirtualKey.CONTROL] || SubscriberRetainerSellList.ListStep != 1)) {
+        if (RetainerSell is not null && (KeyState[VirtualKey.CONTROL] || SubscriberRetainerSellList.ListStep != 0)) {
             SubscriberRetainerSellList.AdjustNext();
         }
         RetainerSell = null;
