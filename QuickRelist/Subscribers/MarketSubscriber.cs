@@ -61,7 +61,7 @@ public class MarketSubscriber : IDisposable {
         Condition.ConditionChange += OnConditionChange;
 
         // Dalamud/Game/Network/Internal/NetworkHandlers.cs
-        itemRequestStartHook ??= Hook.HookFromAddress<PacketDispatcher.Delegates.HandleMarketBoardItemRequestStartPacket>((nint)PacketDispatcher.MemberFunctionPointers.HandleMarketBoardItemRequestStartPacket, MarketItemRequestStartDetour);
+        itemRequestStartHook ??= Hook.HookFromAddress<PacketDispatcher.Delegates.HandleMarketBoardItemRequestStartPacket>(PacketDispatcher.Addresses.HandleMarketBoardItemRequestStartPacket.Value, MarketItemRequestStartDetour);
         itemRequestStartHook?.Enable();
 
         MarketTaskManager = new TaskManager();
@@ -129,7 +129,7 @@ public class MarketSubscriber : IDisposable {
     private readonly Hook<PacketDispatcher.Delegates.HandleMarketBoardItemRequestStartPacket>? itemRequestStartHook;
     private const float listingsPerPacket = 10f;
 
-    private unsafe void MarketItemRequestStartDetour(PacketDispatcher* a1, nint packetRef) {
+    private unsafe void MarketItemRequestStartDetour(uint targetId, IntPtr packetRef) {
         try {
             // Create a new observer
             // 
@@ -155,7 +155,7 @@ public class MarketSubscriber : IDisposable {
             Log.Error(e, "Error in MarketItemRequestStartDetour");
             IsBusy = false;
         }
-        itemRequestStartHook!.Original(a1, packetRef);
+        itemRequestStartHook!.Original(targetId, packetRef);
     }
 
     private void EnsureQueueProcessorIsRunning() {

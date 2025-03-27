@@ -3,10 +3,14 @@
   "Name": "Quick Relist",
   "Punchline": "Adjusts prices",
   "Description": "Adjusts prices",
+  "InternalName": "QuickRelist",
   "ApplicableVersion": "any",
   "Tags": [
     "market",
     "retainer",
     "utility"
+  ],
+  "CategoryTags": [
+    "UI"
   ]
 }

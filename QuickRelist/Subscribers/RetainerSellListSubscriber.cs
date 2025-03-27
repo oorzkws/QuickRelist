@@ -1,10 +1,12 @@
 ﻿using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
+using Dalamud.Game.ClientState.Keys;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using System.Runtime.InteropServices;
 using ValueType = FFXIVClientStructs.FFXIV.Component.GUI.ValueType;
+using static QuickRelist.QuickRelist;
 
 namespace QuickRelist;
 
@@ -23,7 +25,10 @@ public unsafe class RetainerSellListSubscriber : IDisposable {
     }
 
     internal void OnSetup(AddonEvent addonEvent, AddonArgs args) {
-        RetainerSellList = (AtkUnitBase*)args.Addon;
+        RetainerSellList = (AtkUnitBase*)args.Addon; 
+        if (RetainerSellList is not null && KeyState[VirtualKey.CONTROL]) {
+            SubscriberRetainerSellList.AdjustNext();
+        }
     }
 
     internal void OnFinalize(AddonEvent addonEvent, AddonArgs args) {

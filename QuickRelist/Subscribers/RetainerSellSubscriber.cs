@@ -68,6 +68,7 @@ public unsafe class RetainerSellSubscriber : IDisposable {
         var quarter = (int)float.Round(history.Length / 4f);
         double mean = 0;
         double m = 0;
+        Log.Debug($"{history.Length} entries, iterating from {quarter} to {history.Length - quarter}");
         for (var i = quarter; i < history.Length - quarter; i++) {
             // ReSharper disable once PossibleLossOfFraction SalePrice/Quantity = OriginalListingPrice, always integer
             mean += (history[i].SalePrice - mean) / ++m;
@@ -125,7 +126,7 @@ public unsafe class RetainerSellSubscriber : IDisposable {
 
         // Search Lumina for the item name (minus SEString garbage and HQ icons)
         var itemSeString = RetainerSell->ItemName->NodeText;
-        var itemRegString = itemSeString.ExtractText();
+        var itemRegString = itemSeString.GetText();
         var itemData = GuessItemByName(itemSeString);
         if (itemData is null) {
             Log.Warning($"Couldn't find an item matching the name '{itemRegString}'");
@@ -171,7 +172,7 @@ public unsafe class RetainerSellSubscriber : IDisposable {
                 }
                 var targetPrice = GetMinimumAcceptablePrice(itemId, itemData.Item1) - 1;
                 RetainerSell->AskingPrice->SetValue((int)targetPrice);
-                Log.Information($"Set {itemSeString.ExtractText()} price to {targetPrice}");
+                Log.Information($"Set {itemSeString.GetText()} price to {targetPrice}");
                 // 0 = accept, 1 = cancel
                 Callback.Fire(&RetainerSell->AtkUnitBase, true, 0);
                 return true;
