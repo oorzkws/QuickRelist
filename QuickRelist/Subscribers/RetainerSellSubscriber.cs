@@ -61,7 +61,7 @@ public unsafe class RetainerSellSubscriber : IDisposable {
         var history = SubscriberMarket.ItemSalesHistory[itemId].ToImmutableArray().Where(sale => !isHq || sale.IsHq).ToImmutableArray();
         switch (history.Length) {
             case 0: return -1;
-            case 1: return (int)history[1].SalePrice;
+            case 1: return (int)history[0].SalePrice;
         }
 
         // Determine mean from a shortened array with the smallest and largest halves missing
@@ -85,11 +85,17 @@ public unsafe class RetainerSellSubscriber : IDisposable {
                 retainerIds.Add(retainerMan->Retainers[i].RetainerId);
             }
         }
-
-        var halvedHistoricalMean = (int)float.Round(HistoricalMean(itemId, isHq) * 0.5f);
+        
+        var halvedHistoricalMean = (uint)float.Round(HistoricalMean(itemId, isHq) * 0.5f);
         Log.Verbose($"Halved historical mean is {halvedHistoricalMean}");
         var filteredOfferings = SubscriberMarket.ItemCurrentOfferings[itemId].ToImmutableArray().Where(offer => (!isHq || offer.IsHq) && !retainerIds.Contains(offer.RetainerId)).Take(10).ToArray();
         var minimumPrice = 1u;
+        // No current offerings, use the sale history to determine price
+        if (filteredOfferings.Length == 0) {
+            minimumPrice = halvedHistoricalMean * 2;
+            Log.Debug($"No listings found, using historical mean price of {minimumPrice}");
+        }
+        // else...
         for (var i = 0; i < filteredOfferings.Length; i++) {
             var offer = filteredOfferings[i];
             if (i == filteredOfferings.Length - 1) {

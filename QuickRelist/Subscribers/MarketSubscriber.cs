@@ -97,6 +97,10 @@ public class MarketSubscriber : IDisposable {
         } else {
             Log.Warning("Received MB sales history data with no cache structure to put it in");
         }
+        // 0 listings and history is done, mark listing request as complete
+        if (ExpectedOfferingsParts == 0) {
+            CachedItems.Add(itemId);
+        }
     }
 
     private void OnOfferingsReceived(IMarketBoardCurrentOfferings offerings) {
