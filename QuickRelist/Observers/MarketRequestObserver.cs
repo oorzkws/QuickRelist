@@ -2,6 +2,7 @@
 
 namespace QuickRelist;
 
+//TODO: Implement observer pattern?
 public class MarketRequestObserver : IObserver<MarketRequest> {
     private IDisposable unsubscriber;
 

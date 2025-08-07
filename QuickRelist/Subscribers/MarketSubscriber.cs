@@ -50,11 +50,17 @@ public class MarketSubscriber : IDisposable {
         }
     }
 
+    public void Stub(){}
+
 
     public unsafe MarketSubscriber() {
         requestDataHook ??= Hook.HookFromAddress<InfoProxyItemSearch.Delegates.RequestData>((nint)InfoProxyItemSearch.StaticVirtualTablePointer->RequestData, RequestDataDetour);
         requestDataHook?.Enable();
 
+        OnRequestStarted += _ => {};
+        OnRequestUpdated += (_, _) => {};
+        OnRequestErrored += _ => {};
+        
         IMarketBoard.HistoryReceived += OnHistoryReceived;
         IMarketBoard.OfferingsReceived += OnOfferingsReceived;
 
@@ -95,7 +101,7 @@ public class MarketSubscriber : IDisposable {
                 cachedHistory.Add(listing);
             });
         } else {
-            Log.Warning("Received MB sales history data with no cache structure to put it in");
+            Log.Verbose("Received MB sales history data with no cache structure to put it in");
         }
         // 0 listings and history is done, mark listing request as complete
         if (ExpectedOfferingsParts == 0) {
@@ -110,7 +116,7 @@ public class MarketSubscriber : IDisposable {
                 cachedListings.Add(listing);
             });
         } else {
-            Log.Warning("Received MB sales offering data with no cache structure to put it in");
+            Log.Verbose("Received MB sales offering data with no cache structure to put it in");
         }
         // Handle if we're finished a multi-packet request
         if (++ReceivedOfferingsParts >= ExpectedOfferingsParts) {
