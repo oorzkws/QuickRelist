@@ -5,7 +5,7 @@ using System.Numerics;
 
 namespace QuickRelist.Windows;
 
-public class ConfigWindow(QuickRelist plugin) : Window("A Wonderful Configuration Window###With a constant ID"), IDisposable {
+public class ConfigWindow(QuickRelist plugin) : Window("QuickRelist Config###QuickRelist_Config"), IDisposable {
     private readonly Configuration configuration = plugin.Configuration;
 
     // We give this window a constant ID using ###

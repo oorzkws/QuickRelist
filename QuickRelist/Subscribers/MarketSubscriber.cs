@@ -148,9 +148,15 @@ public class MarketSubscriber : IDisposable {
             }
             if (!requestData.Ok) {
                 // Rate-limit: 0x70000003
-                Log.Warning($"Server declined our market request, status code 0x{requestData.Status:X8}");
-                // Place the request back at the top of the queue
-                EnqueueRequest(LastRequestedItemId, true);
+                var errorId = $"0x{requestData.Status:X8}";
+                Log.Warning($"Server declined our market request, status code {errorId}");
+                // Place the request back at the top of the queue, if it was a rate-limit
+                if (errorId == "0x70000003")
+                    EnqueueRequest(LastRequestedItemId, true);
+                else {
+                    Log.Warning("Received non-ratelimit error, giving up");
+                    IsBusy = false;
+                }
             } else {
                 Log.Verbose($"Request made for {requestData.AmountToArrive} listings");
                 ExpectedOfferingsParts = packetsToReceive;
