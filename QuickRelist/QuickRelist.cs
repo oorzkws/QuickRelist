@@ -73,6 +73,13 @@ public class QuickRelist : IDalamudPlugin {
     }
 
     private void OnCommand(string command, string args) {
+        // With args try and find an item id, as a test
+        if (args != string.Empty) {
+            if(!uint.TryParse(args, out uint itemId))
+                return;
+            SubscriberMarket.EnqueueRequest(itemId);
+            return;
+        }
         // in response to the slash command, just toggle the display status of our main ui
         ToggleConfigUi();
     }

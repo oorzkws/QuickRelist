@@ -25,7 +25,7 @@ public unsafe class RetainerSellListSubscriber : IDisposable {
     }
 
     internal void OnSetup(AddonEvent addonEvent, AddonArgs args) {
-        RetainerSellList = (AtkUnitBase*)args.Addon; 
+        RetainerSellList = (AtkUnitBase*)args.Addon.Address; 
         if (RetainerSellList is not null && KeyState[VirtualKey.CONTROL]) {
             SubscriberRetainerSellList.AdjustNext();
         }

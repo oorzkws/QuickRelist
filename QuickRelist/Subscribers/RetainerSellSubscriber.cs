@@ -43,7 +43,7 @@ public unsafe class RetainerSellSubscriber : IDisposable {
     }
 
     internal Tuple<bool, Item>? GuessItemByName(Utf8String name) {
-        var baseName = name.ExtractText();
+        var baseName = name.GetText();
         var isHq = baseName.EndsWith(hqToken);
         if (isHq) {
             baseName = baseName.Substring(0, baseName.Length - hqToken.Length);
@@ -120,7 +120,7 @@ public unsafe class RetainerSellSubscriber : IDisposable {
 
 
     private void OnSetup(AddonEvent addonEvent, AddonArgs args) {
-        RetainerSell = (AddonRetainerSell*)args.Addon;
+        RetainerSell = (AddonRetainerSell*)args.Addon.Address;
         if (RetainerSell is null) {
             Log.Verbose("RetainerSell was gone when we tried to access it");
             return;

@@ -22,7 +22,7 @@ public unsafe class ItemSearchResultSubscriber : IDisposable {
     }
 
     internal void OnSetup(AddonEvent addonEvent, AddonArgs args) {
-        ItemSearchResult = (AddonItemSearchResult*)args.Addon;
+        ItemSearchResult = (AddonItemSearchResult*)args.Addon.Address;
         // YEET
         if (ItemSearchResult is not null && !KeyState[VirtualKey.SHIFT] && Condition.Any(ConditionFlag.OccupiedSummoningBell)) {
             Callback.Fire((AtkUnitBase*)ItemSearchResult, true, -1, 1);
