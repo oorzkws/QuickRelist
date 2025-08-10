@@ -22,21 +22,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\ECommons\ECommons\ECommons.csproj"/>
-    </ItemGroup>
-    
-    <!-- Until Dalamud release-->
-    <PropertyGroup>
-        <DalamudLibPath>D:\Utilities\DalamudStandalone\Dalamud\bin\Release\</DalamudLibPath>
-    </PropertyGroup>
-    <ItemGroup>
-        <Reference Include="Dalamud.Bindings.ImGui">
-            <HintPath>$(DalamudLibPath)Dalamud.Bindings.ImGui.dll</HintPath>
-            <Private>False</Private>
-        </Reference>
-    </ItemGroup>
-
-    <ItemGroup>
+        <PackageReference Include="ECommons" Version="3.0.0.18-api13" />
         <PackageReference Include="Krafs.Publicizer" Version="2.2.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
