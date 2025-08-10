@@ -177,8 +177,12 @@ public unsafe class RetainerSellSubscriber : IDisposable {
                     return true;
                 }
                 var targetPrice = GetMinimumAcceptablePrice(itemId, itemData.Item1) - 1;
-                RetainerSell->AskingPrice->SetValue((int)targetPrice);
-                Log.Information($"Set {itemSeString.GetText()} price to {targetPrice}");
+                var previousPrice = RetainerSell->AskingPrice->Value;
+                if (targetPrice != previousPrice) {
+                    var diff = targetPrice - previousPrice;
+                    RetainerSell->AskingPrice->SetValue((int)targetPrice);
+                    Log.Information($"Adjusted {itemSeString.GetText()} price by {diff} to {targetPrice}");
+                }
                 // 0 = accept, 1 = cancel
                 Callback.Fire(&RetainerSell->AtkUnitBase, true, 0);
                 return true;

@@ -30,21 +30,23 @@ public unsafe class ContextMenuSubscriber {
         if (KeyState[VirtualKey.SHIFT] || !Svc.Condition.Any(ConditionFlag.OccupiedSummoningBell)) {
             return;
         }
-        //if (!EzThrottler.Throttle("ContextMenu.OnOpened", 100)) {
-        //    return;
-        //}
-
-        // See if we have an entry named "Adjust Price" in local language
-        if (GenericHelpers.TryGetAddonByName<AtkUnitBase>("ContextMenu", out var addon)) {
-            var menuEntries = new ReaderContextMenu(addon).Entries;
-            var adjustPriceString = addonStrings!.GetRow(adjustPriceStringRow)!.Text;
-            for (var i = 0; i < menuEntries.Count; i++) {
-                var entry = menuEntries[i];
-                if (entry.Name != adjustPriceString)
-                    continue;
-                Callback.Fire(addon, true, 0, i, 0, 0, 0);
-                break;
+        // Delay one frame here because otherwise the context menu returned is wrong and ECommons will error
+        // TODO: Find a better solution
+        var tempTaskMgr = new ECommons.Automation.NeoTaskManager.TaskManager();
+        tempTaskMgr.EnqueueDelay(1, true);
+        tempTaskMgr.Enqueue(() => {
+            // See if we have an entry named "Adjust Price" in local language
+            if (GenericHelpers.TryGetAddonByName<AtkUnitBase>("ContextMenu", out var addon)) {
+                var menuEntries = new ReaderContextMenu(addon).Entries;
+                var adjustPriceString = addonStrings!.GetRow(adjustPriceStringRow)!.Text;
+                for (var i = 0; i < menuEntries.Count; i++) {
+                    var entry = menuEntries[i];
+                    if (entry.Name != adjustPriceString)
+                        continue;
+                    Callback.Fire(addon, true, 0, i, 0, 0, 0);
+                    break;
+                }
             }
-        }
+        });
     }
 }
