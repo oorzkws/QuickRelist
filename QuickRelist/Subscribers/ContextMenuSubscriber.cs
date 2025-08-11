@@ -32,9 +32,7 @@ public unsafe class ContextMenuSubscriber {
         }
         // Delay one frame here because otherwise the context menu returned is wrong and ECommons will error
         // TODO: Find a better solution
-        var tempTaskMgr = new ECommons.Automation.NeoTaskManager.TaskManager();
-        tempTaskMgr.EnqueueDelay(1, true);
-        tempTaskMgr.Enqueue(() => {
+        Svc.Framework.RunOnTick(() => {
             // See if we have an entry named "Adjust Price" in local language
             if (GenericHelpers.TryGetAddonByName<AtkUnitBase>("ContextMenu", out var addon)) {
                 var menuEntries = new ReaderContextMenu(addon).Entries;
