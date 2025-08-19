@@ -178,10 +178,15 @@ public unsafe class RetainerSellSubscriber : IDisposable {
                 }
                 var targetPrice = GetMinimumAcceptablePrice(itemId, itemData.Item1) - 1;
                 var previousPrice = RetainerSell->AskingPrice->Value;
+                var basePrice = (uint)double.Ceiling(itemData.Item2.PriceLow * (itemData.Item1 ? 1.1 : 1.0)); // Default fill price, 10% bonus for HQ
                 if (targetPrice != previousPrice) {
-                    var diff = targetPrice - previousPrice;
                     RetainerSell->AskingPrice->SetValue((int)targetPrice);
-                    Log.Information($"Adjusted {itemSeString.GetText()} price by {diff} to {targetPrice}");
+                    if (previousPrice != basePrice) { // Existing listing
+                        var diff = targetPrice - previousPrice;
+                        var dir = targetPrice > 0 ? "Increased" : "Decreased";
+                        Log.Information($"Adjusted {itemSeString.GetText()} price by {diff} to {targetPrice}");
+                        Toasts.ShowNormal($"{dir} {itemSeString.GetText()} price by {Math.Abs(diff)} gil");
+                    }
                 }
                 // 0 = accept, 1 = cancel
                 Callback.Fire(&RetainerSell->AtkUnitBase, true, 0);
