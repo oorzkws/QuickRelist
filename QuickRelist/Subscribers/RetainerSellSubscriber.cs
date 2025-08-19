@@ -183,7 +183,7 @@ public unsafe class RetainerSellSubscriber : IDisposable {
                     RetainerSell->AskingPrice->SetValue((int)targetPrice);
                     if (previousPrice != basePrice) { // Existing listing
                         var diff = targetPrice - previousPrice;
-                        var dir = targetPrice > 0 ? "Increased" : "Decreased";
+                        var dir = diff > 0 ? "Increased" : "Decreased";
                         Log.Information($"Adjusted {itemSeString.GetText()} price by {diff} to {targetPrice}");
                         Toasts.ShowNormal($"{dir} {itemSeString.GetText()} price by {Math.Abs(diff)} gil");
                     }
