@@ -12,6 +12,7 @@ using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -88,6 +89,17 @@ public unsafe class RetainerSellSubscriber : IDisposable {
         
         var halvedHistoricalMean = (uint)float.Round(HistoricalMean(itemId, isHq) * 0.5f);
         Log.Verbose($"Halved historical mean is {halvedHistoricalMean}");
+        // Price fixing agreements, currently hard-coded
+        var agreedRetainers = new HashSet<string>([
+            "Shoshanaa" //owned by Strawberry Moon, 33777097236564573
+        ]);
+        foreach (var offer in SubscriberMarket.ItemCurrentOfferings[itemId].ToImmutableArray()) { // Shoshanaa, 
+            Log.Verbose($"Retainer {offer.RetainerId} -> {offer.RetainerName}");
+            if (agreedRetainers.Contains(offer.RetainerName)) {
+                Log.Information($"Using fixed price to match {offer.RetainerName}");
+                return offer.PricePerUnit + 1;
+            }
+        }
         var filteredOfferings = SubscriberMarket.ItemCurrentOfferings[itemId].ToImmutableArray().Where(offer => (!isHq || offer.IsHq) && !retainerIds.Contains(offer.RetainerId)).Take(10).ToArray();
         var minimumPrice = 1u;
         // No current offerings, use the sale history to determine price
@@ -149,9 +161,6 @@ public unsafe class RetainerSellSubscriber : IDisposable {
 
         var retries = 0;
 
-        var provider = 
-        new MarketRequestProvider(itemId).Subscribe(new MarketRequestObserver());
-
         // Wait a little before trying to process
         taskManager.EnqueueDelay(500);
         // Wait for the price check to finish then enter price and close dialog
@@ -183,9 +192,9 @@ public unsafe class RetainerSellSubscriber : IDisposable {
                     RetainerSell->AskingPrice->SetValue((int)targetPrice);
                     if (previousPrice != basePrice) { // Existing listing
                         var diff = targetPrice - previousPrice;
-                        var dir = diff > 0 ? "Increased" : "Decreased";
+                        var dir = diff > 0 ? "increased" : "decreased";
                         Log.Information($"Adjusted {itemSeString.GetText()} price by {diff} to {targetPrice}");
-                        Toasts.ShowNormal($"{dir} {itemSeString.GetText()} price by {Math.Abs(diff)} gil");
+                        Toasts.ShowNormal($"{itemSeString.GetText()} price {dir} by {Math.Abs(diff)} gil");
                     }
                 }
                 // 0 = accept, 1 = cancel

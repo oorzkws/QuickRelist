@@ -1,4 +1,6 @@
-﻿using Dalamud.Game.ClientState.Conditions;
+﻿using Dalamud.Game.Addon.Lifecycle;
+using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.Gui.ContextMenu;
 using ECommons;
@@ -8,6 +10,8 @@ using ECommons.UIHelpers.AtkReaderImplementations;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
+using QuickRelist.Extensions;
+using ValueType = FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType;
 
 namespace QuickRelist;
 
@@ -15,13 +19,13 @@ public unsafe class ContextMenuSubscriber {
     private const int adjustPriceStringRow = 6948;
     private ExcelSheet<Addon>? addonStrings = Data.GetExcelSheet<Addon>();
 
-    public ContextMenuSubscriber() => QuickRelist.ContextMenu.OnMenuOpened += OnOpened;
+    public ContextMenuSubscriber() => AddonLifecycle.RegisterListener(AddonEvent.PostShow, "ContextMenu", OnSetup);//QuickRelist.ContextMenu.OnMenuOpened += OnOpened;
 
     public void Dispose() {
-        QuickRelist.ContextMenu.OnMenuOpened -= OnOpened;
+        AddonLifecycle.UnregisterListener(AddonEvent.PostShow, "ContextMenu");//QuickRelist.ContextMenu.OnMenuOpened -= OnOpened;
     }
 
-    private void OnOpened(IMenuOpenedArgs args) {
+    private void OnSetup(AddonEvent addonEvent, AddonArgs args) {
         if (QuickRelist.SubscriberRetainerSellList.RetainerSellList is null) {
             // Not where we care about
             return;
@@ -30,21 +34,20 @@ public unsafe class ContextMenuSubscriber {
         if (KeyState[VirtualKey.SHIFT] || !Svc.Condition.Any(ConditionFlag.OccupiedSummoningBell)) {
             return;
         }
-        // Delay one frame here because otherwise the context menu returned is wrong and ECommons will error
-        // TODO: Find a better solution
-        Svc.Framework.RunOnTick(() => {
-            // See if we have an entry named "Adjust Price" in local language
-            if (GenericHelpers.TryGetAddonByName<AtkUnitBase>("ContextMenu", out var addon)) {
-                var menuEntries = new ReaderContextMenu(addon).Entries;
-                var adjustPriceString = addonStrings!.GetRow(adjustPriceStringRow)!.Text;
-                for (var i = 0; i < menuEntries.Count; i++) {
-                    var entry = menuEntries[i];
-                    if (entry.Name != adjustPriceString)
-                        continue;
-                    Callback.Fire(addon, true, 0, i, 0, 0, 0);
-                    break;
-                }
-            }
-        });
+        // See if we have an entry named "Adjust Price" in local language
+        var addon = (AtkUnitBase*)args.Addon.Address;
+        var menuEntries = new ReaderContextMenu(addon).Entries;
+        var adjustPriceString = addonStrings!.GetRow(adjustPriceStringRow)!.Text;
+        for (var i = 0; i < menuEntries.Count; i++) {
+            var entry = menuEntries[i];
+            // I guess we doing bools now
+            if (!entry.ValueType(0).EqualsAny(ValueType.String, ValueType.String8, ValueType.WideString, ValueType.ManagedString))
+                continue;
+            if (entry.Name != adjustPriceString)
+                continue;
+            Log.Verbose($"Clicking {entry.Name}");
+            Callback.Fire(addon, true, 0, i, 0, 0, 0);
+            return;
+        }
     }
 }

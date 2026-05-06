@@ -1,6 +1,7 @@
 ﻿using Dalamud.Hooking;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using FFXIVClientStructs.FFXIV.Component.Shell;
 
 namespace QuickRelist;
 
@@ -12,7 +13,6 @@ public unsafe class AgentRetainerEventSubscriber : IDisposable {
     public AgentRetainerEventSubscriber() {
         var retainerAgentInterface = AgentModule.Instance()->GetAgentByInternalId(AgentId.Retainer);
         receiveEventHook ??= Hook.HookFromAddress<AgentReceiveEvent>(new IntPtr(retainerAgentInterface->VirtualTable->ReceiveEvent), OnReceiveEvent);
-
         receiveEventHook?.Enable();
     }
 
@@ -23,7 +23,9 @@ public unsafe class AgentRetainerEventSubscriber : IDisposable {
 
     private void* OnReceiveEvent(AgentInterface* agent, void* rawData, AtkValue* eventArgs, uint eventArgsCount, ulong sender) {
         try {
-            ReceiveEvent?.Invoke(this, new ReceiveEventArgs(agent, rawData, eventArgs, eventArgsCount, sender));
+            var args = new ReceiveEventArgs(agent, rawData, eventArgs, eventArgsCount, sender);
+            args.PrintData();
+            ReceiveEvent?.Invoke(sender: this, args);
         } catch (Exception ex) {
             Log.Error(ex, "Something went wrong when re-invoking AgentRetainer");
         }

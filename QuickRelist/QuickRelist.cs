@@ -21,6 +21,7 @@ public class QuickRelist : IDalamudPlugin {
     internal static RetainerSellListSubscriber SubscriberRetainerSellList { get; private set; } = null!;
     internal static RetainerSellSubscriber SubscriberRetainerSell { get; private set; } = null!;
     internal static ContextMenuSubscriber SubscriberContextMenu { get; private set; } = null!;
+    internal static AgentRetainerEventSubscriber SubscriberAgentRetainerEvent { get; private set; } = null!;
 
     private const string CommandName = "/prelist"; //pReList, not PreList
 
@@ -49,6 +50,7 @@ public class QuickRelist : IDalamudPlugin {
         SubscriberRetainerSellList = new RetainerSellListSubscriber();
         SubscriberRetainerSell = new RetainerSellSubscriber();
         SubscriberContextMenu = new ContextMenuSubscriber();
+        SubscriberAgentRetainerEvent = new AgentRetainerEventSubscriber();
 
         PluginInterface.UiBuilder.Draw += DrawUi;
 
@@ -68,6 +70,7 @@ public class QuickRelist : IDalamudPlugin {
         SubscriberItemSearchResult.Dispose();
         SubscriberRetainerSellList.Dispose();
         SubscriberRetainerSell.Dispose();
+        SubscriberContextMenu.Dispose();
 
         CommandManager.RemoveHandler(CommandName);
     }

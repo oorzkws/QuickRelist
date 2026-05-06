@@ -87,9 +87,8 @@ public class MarketSubscriber : IDisposable {
 
     private unsafe bool RequestDataDetour(InfoProxyItemSearch* self) {
         // The client shouldn't send concurrent requests by default, as far as I know
-
-        // Market Search: 208, 104, 48 || 208 104 48 || 192, 88, 32. Seems to change every session.
-        Log.Verbose($"Intercepting search for ItemId {LastRequestedItemId}, special bytes: {(byte)(self + 0x24)}, {(byte)(self + 0x25)}, {(byte)(self + 0x28)}");
+        
+        Log.Verbose($"Intercepting search for ItemId {LastRequestedItemId}");
         return requestDataHook!.Original(self);
     }
 
@@ -141,8 +140,6 @@ public class MarketSubscriber : IDisposable {
 
     private unsafe void MarketItemRequestStartDetour(uint targetId, IntPtr packetRef) {
         try {
-            // Create a new observer
-            // 
             // Store the amount of packets we expect to receive
             var requestData = MarketBoardItemRequest.Read(packetRef);
             // Invoke the event
