@@ -22,8 +22,8 @@ public unsafe class AgentRetainerEventSubscriber : IDisposable {
     private void* OnReceiveEvent(AgentInterface* agent, void* rawData, AtkValue* eventArgs, uint eventArgsCount, ulong sender) {
         try {
             var args = new ReceiveEventArgs(agent, rawData, eventArgs, eventArgsCount, sender);
-            args.PrintData();
-            ReceiveEvent?.Invoke(sender: this, args);
+            //args.PrintData();
+            ReceiveEvent!.Invoke(this, args);
         } catch (Exception ex) {
             Log.Error(ex, "Something went wrong when re-invoking AgentRetainer");
         }
@@ -31,20 +31,14 @@ public unsafe class AgentRetainerEventSubscriber : IDisposable {
         return receiveEventHook!.Original(agent, rawData, eventArgs, eventArgsCount, sender);
     }
 
-    public class ReceiveEventArgs : EventArgs {
-        public ReceiveEventArgs(AgentInterface* agentInterface, void* rawData, AtkValue* eventArgs, uint eventArgsCount, ulong senderID) {
-            AgentInterface = agentInterface;
-            RawData = rawData;
-            EventArgs = eventArgs;
-            EventArgsCount = eventArgsCount;
-            SenderID = senderID;
-        }
+    public class ReceiveEventArgs(AgentInterface* agentInterface, void* rawData, AtkValue* eventArgs, uint eventArgsCount, ulong senderId)
+        : EventArgs {
 
-        public AgentInterface* AgentInterface;
-        public void* RawData;
-        public AtkValue* EventArgs;
-        public uint EventArgsCount;
-        public ulong SenderID;
+        public AgentInterface* AgentInterface = agentInterface;
+        public void* RawData = rawData;
+        public AtkValue* EventArgs = eventArgs;
+        public uint EventArgsCount = eventArgsCount;
+        public ulong SenderID = senderId;
 
         public void PrintData() {
             Log.Verbose("ReceiveEvent Argument Printout --------------");
