@@ -162,7 +162,7 @@ public class MarketSubscriber : IDisposable {
             var packetsToReceive = (uint)(requestData.AmountToArrive == 0 ? 0 : float.Ceiling(requestData.AmountToArrive / listingsPerPacket));
             ExpectedOfferingsParts = packetsToReceive;
             if (!requestData.Ok)
-                OnRequestErrored.Invoke(this, targetId, requestData.Status);
+                OnRequestErrored.Invoke(this, LastRequestedItemId, requestData.Status);
             else {
                 Log.Verbose($"Request made for {requestData.AmountToArrive} listings");
                 OnRequestStarted.Invoke(this, targetId);
