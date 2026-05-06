@@ -21,7 +21,7 @@ public class QuickRelist : IDalamudPlugin {
     internal static ContextMenuSubscriber SubscriberContextMenu { get; private set; } = null!;
     internal static AgentRetainerEventSubscriber SubscriberAgentRetainerEvent { get; private set; } = null!;
 
-    private const string CommandName = "/prelist"; //pReList, not PreList
+    private const string CommandName = "/relist";
 
     public Configuration Configuration { get; init; }
 
