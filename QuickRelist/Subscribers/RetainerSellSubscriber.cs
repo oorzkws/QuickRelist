@@ -1,5 +1,4 @@
-﻿using ECommons.Automation.NeoTaskManager;
-using ECommons.DalamudServices;
+﻿using ECommons.DalamudServices;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using Lumina.Excel;
@@ -12,13 +11,10 @@ public unsafe class RetainerSellSubscriber : IDisposable {
     internal AddonRetainerSell* RetainerSell;
     private static readonly ExcelSheet<Item> items = Data.GetExcelSheet<Item>()!;
     private const string hqToken = " \uE03C";
-    private TaskManager taskManager;
+
 
 
     public RetainerSellSubscriber() {
-        taskManager = new TaskManager(new TaskManagerConfiguration {
-            AbortOnTimeout = false, // If it times out, we don't need to clear the entire stack
-        });
 
         AddonLifecycle.RegisterListener(AddonEvent.PostSetup, "RetainerSell", OnSetup);
         AddonLifecycle.RegisterListener(AddonEvent.PreFinalize, "RetainerSell", OnFinalize);
@@ -29,7 +25,6 @@ public unsafe class RetainerSellSubscriber : IDisposable {
     public void Dispose() {
         AddonLifecycle.UnregisterListener(AddonEvent.PostSetup, "RetainerSell");
         AddonLifecycle.UnregisterListener(AddonEvent.PreFinalize, "RetainerSell");
-        taskManager.Dispose();
     }
 
     internal (bool hq, Item item) GuessItemByName(AddonRetainerSell* retainerSell) {
