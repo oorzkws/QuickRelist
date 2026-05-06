@@ -17,6 +17,8 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using static QuickRelist.QuickRelist;
+using SortedHistory = System.Collections.Generic.SortedSet<Dalamud.Game.Network.Structures.IMarketBoardHistoryListing>;
+using SortedListings = System.Collections.Generic.SortedSet<Dalamud.Game.Network.Structures.IMarketBoardItemListing>;
 
 namespace QuickRelist;
 
@@ -28,13 +30,14 @@ public unsafe class RetainerSellSubscriber : IDisposable {
 
 
     public RetainerSellSubscriber() {
-        taskManager = new ECommons.Automation.NeoTaskManager.TaskManager(new TaskManagerConfiguration {
+        taskManager = new TaskManager(new TaskManagerConfiguration {
             AbortOnTimeout = false, // If it times out, we don't need to clear the entire stack
         });
 
         AddonLifecycle.RegisterListener(AddonEvent.PostSetup, "RetainerSell", OnSetup);
         AddonLifecycle.RegisterListener(AddonEvent.PreFinalize, "RetainerSell", OnFinalize);
 
+        SubscriberMarket.OnRequestFinished += OnRequestFinished;
     }
 
     public void Dispose() {
@@ -43,19 +46,16 @@ public unsafe class RetainerSellSubscriber : IDisposable {
         taskManager.Dispose();
     }
 
-    internal Tuple<bool, Item>? GuessItemByName(Utf8String name) {
-        var baseName = name.GetText();
+    internal (bool hq, Item item) GuessItemByName(AddonRetainerSell* retainerSell) {
+        // Search Lumina for the item name (minus SEString garbage and HQ icons)
+        var baseName = retainerSell->ItemName->NodeText.GetText();
         var isHq = baseName.EndsWith(hqToken);
         if (isHq) {
             baseName = baseName.Substring(0, baseName.Length - hqToken.Length);
         }
-
-        var item = items.Where(i => i.Name.ExtractText() == baseName).FirstOrNull();
-
-        if (item is null)
-            return null;
-
-        return new Tuple<bool, Item>(isHq, item.Value);
+        var itemData = items.First(i => i.Name.ExtractText() == baseName);
+        Log.Verbose($"Guessed Item ID for {itemData.Name.GetText()} is {itemData.RowId}");
+        return (isHq, itemData);
     }
 
     private static int HistoricalMean(uint itemId, bool isHq) {
@@ -67,10 +67,10 @@ public unsafe class RetainerSellSubscriber : IDisposable {
 
         // Determine mean from a shortened array with the smallest and largest quartiles missing
         var quarter = (int)float.Round(history.Length / 4f);
+        Log.Verbose($"{history.Length} entries, iterating from {quarter} to {history.Length - quarter}");
         history = history.Skip(quarter).SkipLast(quarter).ToArray();
         double mean = 0;
         double m = 0;
-        Log.Debug($"{history.Length} entries, iterating from {quarter} to {history.Length - quarter}");
         foreach (var entry in history) {
             mean += (entry.SalePrice - mean) / ++m;
         }
@@ -110,7 +110,7 @@ public unsafe class RetainerSellSubscriber : IDisposable {
         // Still no matches, use the sale history to determine the price
         if (halvedHistoricalMean > 0) {
             uint minimumPrice = halvedHistoricalMean * 2;
-            Log.Debug($"No suitable listings found, using historical mean price of {minimumPrice}");
+            Log.Debug($"No suitable listings found for {items.GetRow(itemId).Name.ExtractText()}, using historical mean price of {minimumPrice}");
             return minimumPrice;
         }
         // Welp
@@ -118,6 +118,33 @@ public unsafe class RetainerSellSubscriber : IDisposable {
         return 69420420;
     }
 
+    private void OnRequestFinished(MarketSubscriber self, uint itemId) {
+        if (!GenericHelpers.TryGetAddonByName<AddonRetainerSell>("RetainerSell", out var retainerSell))
+            return;
+        // Search Lumina for the shown item name (minus SEString garbage and HQ icons)
+        var itemData = GuessItemByName(retainerSell);
+        // Changed since the request started
+        if (itemData.item.RowId != itemId)
+            return;
+        // Fetch the target price from the history etc
+        var targetPrice = GetMinimumAcceptablePrice(itemId, itemData.hq) - 1;
+        var previousPrice = RetainerSell->AskingPrice->Value;
+        var basePrice = (uint)double.Ceiling(itemData.item.PriceLow * (itemData.hq ? 1.1 : 1.0)); // Default fill price, 10% bonus for HQ
+        if (targetPrice != previousPrice) {
+            RetainerSell->AskingPrice->SetValue((int)targetPrice);
+            if (previousPrice != basePrice) { // Existing listing
+                var diff = targetPrice - previousPrice;
+                var dir = diff > 0 ? "increased" : "decreased";
+                Log.Information($"Adjusted {itemData.item.Name.GetText()} price by {diff} to {targetPrice}");
+                Toasts.ShowNormal($"{itemData.item.Name.GetText()} price {dir} by {Math.Abs(diff)} gil");
+            }
+            // 0 = accept, 1 = cancel
+            Callback.Fire(&RetainerSell->AtkUnitBase, true, 0);
+            return;
+        }
+        // 0 = accept, 1 = cancel
+        Callback.Fire(&RetainerSell->AtkUnitBase, true, 1);
+    }
 
     private void OnSetup(AddonEvent addonEvent, AddonArgs args) {
         RetainerSell = (AddonRetainerSell*)args.Addon.Address;
@@ -129,77 +156,25 @@ public unsafe class RetainerSellSubscriber : IDisposable {
         if (KeyState[VirtualKey.SHIFT] || !Svc.Condition.Any(ConditionFlag.OccupiedSummoningBell)) {
             return;
         }
-
-        // Search Lumina for the item name (minus SEString garbage and HQ icons)
-        var itemSeString = RetainerSell->ItemName->NodeText;
-        var itemRegString = itemSeString.GetText();
-        var itemData = GuessItemByName(itemSeString);
-        if (itemData is null) {
-            Log.Warning($"Couldn't find an item matching the name '{itemRegString}'");
-            return;
-        }
-
-        var itemId = itemData.Item2.RowId;
-
-        Log.Verbose($"Guessed Item ID for {itemRegString} is {itemId}");
+        
+        var itemData = GuessItemByName(RetainerSell);
+        var itemId = itemData.item.RowId;
+        
         // If we don't have a cache entry, queue a request
         if (!SubscriberMarket.CachedItems.Contains(itemId)) {
             SubscriberMarket.EnqueueRequest(itemId);
+        } else {
+            OnRequestFinished(SubscriberMarket, itemId); // Just manually invoke it lol
         }
-
-        var retries = 0;
-
-        // Wait a little before trying to process
-        taskManager.EnqueueDelay(500);
-        // Wait for the price check to finish then enter price and close dialog
-        taskManager.Enqueue(() => {
-            if (!EzThrottler.Throttle("RetainerSellSubscriber.OnSetup.ProcessUpdate", 100)) {
-                return false;
-            }
-            // 15s timeout
-            if (retries++ > 15000 / 100) {
-                Log.Warning($"Timeout on awaiting market data for {itemId}");
-                taskManager.Abort();
-                return false;
-            }
-            if (SubscriberMarket.CachedItems.Contains(itemId)) {
-                // Make sure the addon is still valid
-                if (RetainerSell is null) {
-                    if (GenericHelpers.TryGetAddonByName<AddonRetainerSell>("RetainerSell", out var newRetainerSell)) {
-                        RetainerSell = newRetainerSell;
-                    } else {
-                        Log.Warning("Lost RetainerSell and couldn't find it again!");
-                    }
-                    // true in the sense that we have nothing to edit lmao
-                    return true;
-                }
-                var targetPrice = GetMinimumAcceptablePrice(itemId, itemData.Item1) - 1;
-                var previousPrice = RetainerSell->AskingPrice->Value;
-                var basePrice = (uint)double.Ceiling(itemData.Item2.PriceLow * (itemData.Item1 ? 1.1 : 1.0)); // Default fill price, 10% bonus for HQ
-                if (targetPrice != previousPrice) {
-                    RetainerSell->AskingPrice->SetValue((int)targetPrice);
-                    if (previousPrice != basePrice) { // Existing listing
-                        var diff = targetPrice - previousPrice;
-                        var dir = diff > 0 ? "increased" : "decreased";
-                        Log.Information($"Adjusted {itemSeString.GetText()} price by {diff} to {targetPrice}");
-                        Toasts.ShowNormal($"{itemSeString.GetText()} price {dir} by {Math.Abs(diff)} gil");
-                    }
-                }
-                // 0 = accept, 1 = cancel
-                Callback.Fire(&RetainerSell->AtkUnitBase, true, 0);
-                return true;
-            }
-            return false;
-        });
     }
 
     private void OnFinalize(AddonEvent addonEvent, AddonArgs args) {
         // If CTRL is held while closing the dialog, auto process the whole list
         if (RetainerSell is not null) {
-            if (KeyState[VirtualKey.CONTROL] && SubscriberRetainerSellList.ListStep == 0) {
-                SubscriberRetainerSellList.ListStep = 1;
+            if (KeyState[VirtualKey.CONTROL]) {
+                SubscriberRetainerSellList.Adjusting = true;
             }
-            if (SubscriberRetainerSellList.ListStep != 0) {
+            if (SubscriberRetainerSellList.Adjusting) {
                 SubscriberRetainerSellList.AdjustNext();
             }
         }

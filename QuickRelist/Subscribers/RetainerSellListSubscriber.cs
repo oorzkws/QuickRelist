@@ -4,19 +4,29 @@ using Dalamud.Game.ClientState.Keys;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using Dalamud.Hooking;
 using System.Runtime.InteropServices;
 using ValueType = FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType;
 using static QuickRelist.QuickRelist;
+
 
 namespace QuickRelist;
 
 public unsafe class RetainerSellListSubscriber : IDisposable {
     internal AtkUnitBase* RetainerSellList;
-    internal int ListStep = 0;
+    internal bool Adjusting;
+    internal int ListStep;
 
     public RetainerSellListSubscriber() {
         AddonLifecycle.RegisterListener(AddonEvent.PostSetup, "RetainerSellList", OnSetup);
         AddonLifecycle.RegisterListener(AddonEvent.PreFinalize, "RetainerSellList", OnFinalize);
+        // Lets us figure out the last-clicked index
+        SubscriberAgentRetainerEvent.ReceiveEvent += delegate (object? _, AgentRetainerEventSubscriber.ReceiveEventArgs args) {
+            if (args.SenderID != 3ul || args.EventArgsCount != 3)
+                return;
+            ListStep = args.EventArgs[1].Int + 1;
+            Log.Verbose($"Clicked RetainerSellList item # {ListStep - 1}");
+        };
     }
 
     public void Dispose() {
@@ -25,8 +35,10 @@ public unsafe class RetainerSellListSubscriber : IDisposable {
     }
 
     internal void OnSetup(AddonEvent addonEvent, AddonArgs args) {
-        RetainerSellList = (AtkUnitBase*)args.Addon.Address; 
+        RetainerSellList = (AtkUnitBase*)args.Addon.Address;
+        ListStep = 0;
         if (RetainerSellList is not null && KeyState[VirtualKey.CONTROL]) {
+            Adjusting = true;
             SubscriberRetainerSellList.AdjustNext();
         }
     }
@@ -68,11 +80,10 @@ public unsafe class RetainerSellListSubscriber : IDisposable {
         Log.Verbose($"Adjusting item {ListStep}");
         var ret = AgentModule.Instance()->GetAgentByInternalId(AgentId.Retainer);
         var saleCount = RetainerManager.Instance()->GetActiveRetainer()->MarketItemCount;
-        if (ListStep >= saleCount) {
-            ListStep = 0;
-            return;
-        }
         ClickItem(ret, ListStep);
-        ListStep++;
+        if (ListStep >= saleCount) {
+            Log.Verbose($"Finished adjustment");
+            Adjusting = false;
+        }
     }
 }

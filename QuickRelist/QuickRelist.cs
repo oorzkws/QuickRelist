@@ -46,11 +46,12 @@ public class QuickRelist : IDalamudPlugin {
         });
 
         SubscriberMarket = new MarketSubscriber();
+        SubscriberAgentRetainerEvent = new AgentRetainerEventSubscriber();
         SubscriberItemSearchResult = new ItemSearchResultSubscriber();
         SubscriberRetainerSellList = new RetainerSellListSubscriber();
         SubscriberRetainerSell = new RetainerSellSubscriber();
         SubscriberContextMenu = new ContextMenuSubscriber();
-        SubscriberAgentRetainerEvent = new AgentRetainerEventSubscriber();
+        
 
         PluginInterface.UiBuilder.Draw += DrawUi;
 

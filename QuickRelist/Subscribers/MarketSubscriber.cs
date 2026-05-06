@@ -82,19 +82,19 @@ public class MarketSubscriber : IDisposable {
         return requestDataHook!.Original(self);
     }
     
-    public delegate void OnRequestFinishedDelegate(MarketSubscriber self, uint itemId, SortedListings itemListings, SortedHistory historyListings);
-    public event OnRequestFinishedDelegate OnRequestFinished = (_, _, _, _) => {};
+    public delegate void OnRequestFinishedDelegate(MarketSubscriber self, uint itemId);
+    public event OnRequestFinishedDelegate OnRequestFinished = (_, _) => {};
     
     public delegate void OnRequestErroredDelegate(MarketSubscriber self, uint itemId, uint exceptionCode);
     public event OnRequestErroredDelegate OnRequestErrored = delegate(MarketSubscriber self, uint itemId, uint statusCode) {
         var errorHex = $"0x{statusCode:X8}";
         Log.Warning($"Server declined our market request, status code {errorHex}");
+        self.IsBusy = false;
         // Place the request back at the top of the queue if it was a rate-limit error
         if (errorHex == "0x70000003")
             self.EnqueueRequest(itemId, true);
         else { // otherwise give up
             Log.Warning("Received non-ratelimit error, giving up");
-            self.IsBusy = false;
         }
     };
     
@@ -104,7 +104,7 @@ public class MarketSubscriber : IDisposable {
         if (receivedPackets >= expectedPackets) {
             Log.Verbose($"Finished receiving {receivedPackets} packets of listings for ItemId {itemId}");
             self.CachedItems.Add(itemId);
-            self.OnRequestFinished.Invoke(self, itemId, self.ItemCurrentOfferings[itemId], self.ItemSalesHistory[itemId]);
+            self.OnRequestFinished.Invoke(self, itemId); //, self.ItemCurrentOfferings[itemId], self.ItemSalesHistory[itemId]. Pain to use currently, may change later.
             self.IsBusy = false;
         }
     };
@@ -167,10 +167,12 @@ public class MarketSubscriber : IDisposable {
             // Invoke the event
             var packetsToReceive = (uint)(requestData.AmountToArrive == 0 ? 0 : float.Ceiling(requestData.AmountToArrive / listingsPerPacket));
             ExpectedOfferingsParts = packetsToReceive;
-            Log.Verbose($"Request made for {requestData.AmountToArrive} listings");
-            OnRequestStarted.Invoke(this, targetId);
             if (!requestData.Ok)
                 OnRequestErrored.Invoke(this, targetId, requestData.Status);
+            else {
+                Log.Verbose($"Request made for {requestData.AmountToArrive} listings");
+                OnRequestStarted.Invoke(this, targetId);
+            }
         } catch (Exception e) {
             Log.Error(e, "Error in MarketItemRequestStartDetour");
             IsBusy = false;
