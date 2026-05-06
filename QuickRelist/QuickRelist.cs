@@ -66,6 +66,7 @@ public class QuickRelist : IDalamudPlugin {
         ConfigWindow.Dispose();
 
         SubscriberMarket.Dispose();
+        SubscriberAgentRetainerEvent.Dispose();
         SubscriberItemSearchResult.Dispose();
         SubscriberRetainerSellList.Dispose();
         SubscriberRetainerSell.Dispose();

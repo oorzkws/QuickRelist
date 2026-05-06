@@ -6,13 +6,11 @@ using System.Runtime.InteropServices;
 namespace QuickRelist;
 
 public unsafe class RetainerSellListSubscriber : IDisposable {
-    internal AtkUnitBase* RetainerSellList;
     internal bool Adjusting;
     internal int ListStep;
 
     public RetainerSellListSubscriber() {
         AddonLifecycle.RegisterListener(AddonEvent.PostSetup, "RetainerSellList", OnSetup);
-        AddonLifecycle.RegisterListener(AddonEvent.PreFinalize, "RetainerSellList", OnFinalize);
         // Lets us figure out the last-clicked index
         SubscriberAgentRetainerEvent.ReceiveEvent += delegate (object? _, AgentRetainerEventSubscriber.ReceiveEventArgs args) {
             if (args.SenderID != 3ul || args.EventArgsCount != 3)
@@ -28,16 +26,12 @@ public unsafe class RetainerSellListSubscriber : IDisposable {
     }
 
     internal void OnSetup(AddonEvent addonEvent, AddonArgs args) {
-        RetainerSellList = (AtkUnitBase*)args.Addon.Address;
+        var retainerSellList = (AtkUnitBase*)args.Addon.Address;
         ListStep = 0;
-        if (RetainerSellList is not null && KeyState[VirtualKey.CONTROL]) {
+        if (retainerSellList is not null && KeyState[VirtualKey.CONTROL]) {
             Adjusting = true;
             SubscriberRetainerSellList.AdjustNext();
         }
-    }
-
-    internal void OnFinalize(AddonEvent addonEvent, AddonArgs args) {
-        RetainerSellList = null;
     }
 
     internal static AtkValue* EventArgArray(params int[] args) {

@@ -77,7 +77,10 @@ public class MarketSubscriber : IDisposable {
     }
     
     public delegate void OnRequestFinishedDelegate(MarketSubscriber self, uint itemId);
-    public event OnRequestFinishedDelegate OnRequestFinished = (_, _) => {};
+    public event OnRequestFinishedDelegate OnRequestFinished = (self, itemId) => {
+        self.ItemCurrentOfferings.TryAdd(itemId, new SortedListings(new ItemListingsByPrice()));
+        self.ItemSalesHistory.TryAdd(itemId, new SortedHistory(new HistoryListingsByPrice()));
+    };
     
     public delegate void OnRequestErroredDelegate(MarketSubscriber self, uint itemId, uint exceptionCode);
     public event OnRequestErroredDelegate OnRequestErrored = delegate(MarketSubscriber self, uint itemId, uint statusCode) {

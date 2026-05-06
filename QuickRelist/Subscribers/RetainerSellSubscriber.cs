@@ -8,14 +8,12 @@ using System.Linq;
 namespace QuickRelist;
 
 public unsafe class RetainerSellSubscriber : IDisposable {
-    internal AddonRetainerSell* RetainerSell;
     private static readonly ExcelSheet<Item> items = Data.GetExcelSheet<Item>()!;
     private const string hqToken = " \uE03C";
 
 
 
     public RetainerSellSubscriber() {
-
         AddonLifecycle.RegisterListener(AddonEvent.PostSetup, "RetainerSell", OnSetup);
         AddonLifecycle.RegisterListener(AddonEvent.PreFinalize, "RetainerSell", OnFinalize);
 
@@ -109,10 +107,10 @@ public unsafe class RetainerSellSubscriber : IDisposable {
             return;
         // Fetch the target price from the history etc
         var targetPrice = GetMinimumAcceptablePrice(itemId, itemData.hq) - 1;
-        var previousPrice = RetainerSell->AskingPrice->Value;
+        var previousPrice = retainerSell->AskingPrice->Value;
         var basePrice = (uint)double.Ceiling(itemData.item.PriceLow * (itemData.hq ? 1.1 : 1.0)); // Default fill price, 10% bonus for HQ
         if (targetPrice != previousPrice) {
-            RetainerSell->AskingPrice->SetValue((int)targetPrice);
+            retainerSell->AskingPrice->SetValue((int)targetPrice);
             if (previousPrice != basePrice) { // Existing listing
                 var diff = targetPrice - previousPrice;
                 var dir = diff > 0 ? "increased" : "decreased";
@@ -120,16 +118,16 @@ public unsafe class RetainerSellSubscriber : IDisposable {
                 Toasts.ShowNormal($"{itemData.item.Name.GetText()} price {dir} by {Math.Abs(diff)} gil");
             }
             // 0 = accept, 1 = cancel
-            Callback.Fire(&RetainerSell->AtkUnitBase, true, 0);
+            Callback.Fire(&retainerSell->AtkUnitBase, true, 0);
             return;
         }
         // 0 = accept, 1 = cancel
-        Callback.Fire(&RetainerSell->AtkUnitBase, true, 1);
+        Callback.Fire(&retainerSell->AtkUnitBase, true, 1);
     }
 
     private void OnSetup(AddonEvent addonEvent, AddonArgs args) {
-        RetainerSell = (AddonRetainerSell*)args.Addon.Address;
-        if (RetainerSell is null) {
+        var retainerSell = (AddonRetainerSell*)args.Addon.Address;
+        if (retainerSell is null) {
             Log.Verbose("RetainerSell was gone when we tried to access it");
             return;
         }
@@ -138,7 +136,7 @@ public unsafe class RetainerSellSubscriber : IDisposable {
             return;
         }
         
-        var itemData = GuessItemByName(RetainerSell);
+        var itemData = GuessItemByName(retainerSell);
         var itemId = itemData.item.RowId;
         
         // If we don't have a cache entry, queue a request
@@ -150,8 +148,9 @@ public unsafe class RetainerSellSubscriber : IDisposable {
     }
 
     private void OnFinalize(AddonEvent addonEvent, AddonArgs args) {
+        var retainerSell = (AddonRetainerSell*)args.Addon.Address;
         // If CTRL is held while closing the dialog, auto process the whole list
-        if (RetainerSell is not null) {
+        if (retainerSell is not null) {
             if (KeyState[VirtualKey.CONTROL]) {
                 SubscriberRetainerSellList.Adjusting = true;
             }
@@ -159,6 +158,5 @@ public unsafe class RetainerSellSubscriber : IDisposable {
                 SubscriberRetainerSellList.AdjustNext();
             }
         }
-        RetainerSell = null;
     }
 }

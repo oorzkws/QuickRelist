@@ -10,17 +10,11 @@ public unsafe class ContextMenuSubscriber {
     private const int adjustPriceStringRow = 6948;
     private ExcelSheet<Addon>? addonStrings = Data.GetExcelSheet<Addon>();
 
-    public ContextMenuSubscriber() => AddonLifecycle.RegisterListener(AddonEvent.PostShow, "ContextMenu", OnSetup);//QuickRelist.ContextMenu.OnMenuOpened += OnOpened;
+    public ContextMenuSubscriber() => AddonLifecycle.RegisterListener(AddonEvent.PostShow, "ContextMenu", OnSetup);
 
-    public void Dispose() {
-        AddonLifecycle.UnregisterListener(AddonEvent.PostShow, "ContextMenu");//QuickRelist.ContextMenu.OnMenuOpened -= OnOpened;
-    }
+    public void Dispose() => AddonLifecycle.UnregisterListener(AddonEvent.PostShow, "ContextMenu");
 
     private void OnSetup(AddonEvent addonEvent, AddonArgs args) {
-        if (QuickRelist.SubscriberRetainerSellList.RetainerSellList is null) {
-            // Not where we care about
-            return;
-        }
         // Manual override, or not at a bell
         if (KeyState[VirtualKey.SHIFT] || !Svc.Condition.Any(ConditionFlag.OccupiedSummoningBell)) {
             return;
