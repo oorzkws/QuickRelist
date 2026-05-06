@@ -1,17 +1,8 @@
-﻿using Dalamud.Game.Addon.Lifecycle;
-using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
-using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.ClientState.Keys;
-using Dalamud.Game.Gui.ContextMenu;
-using ECommons;
-using ECommons.Automation;
-using ECommons.DalamudServices;
+﻿using ECommons.DalamudServices;
 using ECommons.UIHelpers.AtkReaderImplementations;
-using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using QuickRelist.Extensions;
-using ValueType = FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType;
 
 namespace QuickRelist;
 

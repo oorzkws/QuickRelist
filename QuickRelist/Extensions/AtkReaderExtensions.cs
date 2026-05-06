@@ -1,7 +1,5 @@
 ﻿using Dalamud.Game.NativeWrapper;
 using ECommons.UIHelpers.AtkReaderImplementations;
-using FFXIVClientStructs.FFXIV.Component.GUI;
-using ValueType = FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType;
 
 namespace QuickRelist.Extensions;
 

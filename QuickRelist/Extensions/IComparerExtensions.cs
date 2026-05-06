@@ -1,5 +1,4 @@
 ﻿using Dalamud.Game.Network.Structures;
-using System.Collections.Generic;
 
 namespace QuickRelist.Extensions;
 

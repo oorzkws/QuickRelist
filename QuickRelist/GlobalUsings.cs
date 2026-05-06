@@ -1,2 +1,12 @@
-﻿global using System;
+﻿global using Dalamud.Game.Addon.Lifecycle;
+global using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
+global using Dalamud.Game.ClientState.Conditions;
+global using Dalamud.Game.ClientState.Keys;
+global using ECommons;
+global using ECommons.Automation;
+global using FFXIVClientStructs.FFXIV.Component.GUI;
+global using System;
+global using System.Collections.Generic;
 global using static ECommons.DalamudServices.Svc;
+global using static QuickRelist.QuickRelist;
+global using ValueType = FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType;

@@ -13,6 +13,6 @@ public class Configuration : IPluginConfiguration {
 
     // the below exist just to make saving less cumbersome
     public void Save() {
-        PluginInterface.SavePluginConfig(this);
+        QuickRelist.PluginInterface.SavePluginConfig(this);
     }
 }

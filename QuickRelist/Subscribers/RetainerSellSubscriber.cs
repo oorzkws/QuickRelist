@@ -1,24 +1,10 @@
-﻿using Dalamud.Game.Addon.Lifecycle;
-using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
-using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.ClientState.Keys;
-using ECommons;
-using ECommons.Automation;
-using ECommons.Automation.NeoTaskManager;
+﻿using ECommons.Automation.NeoTaskManager;
 using ECommons.DalamudServices;
-using ECommons.Throttlers;
 using FFXIVClientStructs.FFXIV.Client.Game;
-using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
-using System.Collections;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
-using static QuickRelist.QuickRelist;
-using SortedHistory = System.Collections.Generic.SortedSet<Dalamud.Game.Network.Structures.IMarketBoardHistoryListing>;
-using SortedListings = System.Collections.Generic.SortedSet<Dalamud.Game.Network.Structures.IMarketBoardItemListing>;
 
 namespace QuickRelist;
 

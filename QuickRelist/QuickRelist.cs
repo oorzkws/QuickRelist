@@ -3,9 +3,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using ECommons;
 using QuickRelist.Windows;
-using System.Collections.Generic;
 
 namespace QuickRelist;
 

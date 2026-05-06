@@ -1,13 +1,6 @@
-﻿using Dalamud.Game.Addon.Lifecycle;
-using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
-using Dalamud.Game.ClientState.Keys;
-using FFXIVClientStructs.FFXIV.Client.Game;
+﻿using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using FFXIVClientStructs.FFXIV.Component.GUI;
-using Dalamud.Hooking;
 using System.Runtime.InteropServices;
-using ValueType = FFXIVClientStructs.FFXIV.Component.GUI.AtkValueType;
-using static QuickRelist.QuickRelist;
 
 
 namespace QuickRelist;
