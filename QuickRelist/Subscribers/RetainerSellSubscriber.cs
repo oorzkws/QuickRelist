@@ -59,20 +59,20 @@ public unsafe class RetainerSellSubscriber : IDisposable {
     }
 
     private static int HistoricalMean(uint itemId, bool isHq) {
-        var history = SubscriberMarket.ItemSalesHistory[itemId].ToImmutableArray().Where(sale => !isHq || sale.IsHq).ToImmutableArray();
+        var history = SubscriberMarket.ItemSalesHistory[itemId].Where(sale => !isHq || sale.IsHq).ToArray();
         switch (history.Length) {
             case 0: return -1;
             case 1: return (int)history[0].SalePrice;
         }
 
-        // Determine mean from a shortened array with the smallest and largest halves missing
+        // Determine mean from a shortened array with the smallest and largest quartiles missing
         var quarter = (int)float.Round(history.Length / 4f);
+        history = history.Skip(quarter).SkipLast(quarter).ToArray();
         double mean = 0;
         double m = 0;
         Log.Debug($"{history.Length} entries, iterating from {quarter} to {history.Length - quarter}");
-        for (var i = quarter; i < history.Length - quarter; i++) {
-            // ReSharper disable once PossibleLossOfFraction SalePrice/Quantity = OriginalListingPrice, always integer
-            mean += (history[i].SalePrice - mean) / ++m;
+        foreach (var entry in history) {
+            mean += (entry.SalePrice - mean) / ++m;
         }
         return (int)mean;
     }
@@ -80,54 +80,42 @@ public unsafe class RetainerSellSubscriber : IDisposable {
     private uint GetMinimumAcceptablePrice(uint itemId, bool isHq) {
         var retainerIds = new HashSet<ulong>();
         var retainerMan = RetainerManager.Instance();
-
         if (retainerMan is not null) {
-            for (var i = 0; i < retainerMan->Retainers.Length; i++) {
-                retainerIds.Add(retainerMan->Retainers[i].RetainerId);
-            }
+            retainerIds = retainerMan->Retainers.ToArray().Select(r => r.RetainerId).ToHashSet();
         }
         
         var halvedHistoricalMean = (uint)float.Round(HistoricalMean(itemId, isHq) * 0.5f);
         Log.Verbose($"Halved historical mean is {halvedHistoricalMean}");
+        
         // Price fixing agreements, currently hard-coded
         var agreedRetainers = new HashSet<string>([
             "Shoshanaa" //owned by Strawberry Moon, 33777097236564573
         ]);
-        foreach (var offer in SubscriberMarket.ItemCurrentOfferings[itemId].ToImmutableArray()) { // Shoshanaa, 
-            Log.Verbose($"Retainer {offer.RetainerId} -> {offer.RetainerName}");
-            if (agreedRetainers.Contains(offer.RetainerName)) {
-                Log.Information($"Using fixed price to match {offer.RetainerName}");
-                return offer.PricePerUnit + 1;
-            }
+        var currentOfferings = SubscriberMarket.ItemCurrentOfferings[itemId];
+        var agreedOffer = currentOfferings.FirstOrDefault(o => agreedRetainers.Contains(o.RetainerName));
+        if (agreedOffer is not null) {
+            Log.Information($"Using fixed price to match {agreedOffer.RetainerName}");
+            return agreedOffer.PricePerUnit + 1;
         }
-        var filteredOfferings = SubscriberMarket.ItemCurrentOfferings[itemId].ToImmutableArray().Where(offer => (!isHq || offer.IsHq) && !retainerIds.Contains(offer.RetainerId)).Take(10).ToArray();
-        var minimumPrice = 1u;
-        // No current offerings, use the sale history to determine price
-        if (filteredOfferings.Length == 0) {
-            minimumPrice = halvedHistoricalMean * 2;
-            Log.Debug($"No listings found, using historical mean price of {minimumPrice}");
+        // filter our own listings and non-HQ if the item is HQ
+        var filteredOfferings = currentOfferings.Where(
+            offer => (!isHq || offer.IsHq) 
+            && !retainerIds.Contains(offer.RetainerId)
+        ).Take(10).ToArray();
+        // Take the first offer that is >= the halved historical mean
+        foreach (var offer in filteredOfferings) {
+            if (offer.PricePerUnit >= halvedHistoricalMean)
+                return offer.PricePerUnit;
         }
-        // else...
-        for (var i = 0; i < filteredOfferings.Length; i++) {
-            var offer = filteredOfferings[i];
-            if (i == filteredOfferings.Length - 1) {
-                Log.Debug("Matched the tenth or last unit price :shrug:");
-                minimumPrice = offer.PricePerUnit;
-                break;
-            }
-            if (offer.PricePerUnit < minimumPrice)
-                continue;
-            if (offer.PricePerUnit < halvedHistoricalMean)
-                continue;
-            minimumPrice = offer.PricePerUnit;
-            break;
+        // Still no matches, use the sale history to determine the price
+        if (halvedHistoricalMean > 0) {
+            uint minimumPrice = halvedHistoricalMean * 2;
+            Log.Debug($"No suitable listings found, using historical mean price of {minimumPrice}");
+            return minimumPrice;
         }
-        // Still haven't found a price lol
-        if (minimumPrice == 1) {
-            Log.Warning($"No acceptable price found for {items.GetRow(itemId)!.Name.ExtractText()}");
-            minimumPrice = 69421; //items.GetRow(itemId)!.PriceLow;
-        }
-        return minimumPrice;
+        // Welp
+        Log.Warning($"No acceptable price found for {items.GetRow(itemId).Name.ExtractText()}");
+        return 69420420;
     }
 
 
